@@ -1,0 +1,254 @@
+{{define "content"}}
+  <br>
+  <b>Date: </b><input type="text" id="id_datepicker" readonly="readonly">
+  <b>&nbsp; Audit Name: </b>
+  <select id="id_select_auditname">
+    {{if not .AuditCount}}
+      <option value="">None</option>
+    {{end}}
+    {{$select_auditname := .AuditNameSelected}}
+    {{range $auditname, $count := .AuditCount}}
+      <option value="{{$auditname}}" {{if eq $select_auditname $auditname}}selected{{end}}>{{$auditname}} ({{$count}})</option>
+    {{end}}
+
+  </select>
+  <b>&nbsp; Audit Code: </b>
+  <select id="id_select_auditcode">
+  </select>
+  </select>
+  <b>&nbsp; Sub Code: </b>
+  <select id="id_select_subcode">
+  </select>
+  <input type=button id="id_csv" value="Download CSV">
+  <b>&nbsp; State: T-ticket, A-autofix </b>
+  <br>
+  <b>Column: </b>
+  <select id="id_select_column">
+    <option value="netblock">Netblock</option>
+    <option value="tags">Tags</option>
+    <option value="vlanID">VlanID</option>
+    <option value="building">Building</option>
+    <option value="network">Network</option>
+    <option value="attributes">Attributes</option>
+    <option value="auditMsg">AuditMsg</option>
+    <option value="state">State</option>
+    <option value="fixState">FixState</option>
+    <option value="expectedValue">ExpectedValue</option>
+  </select>
+  <b>matches</b>
+  <input type="text" id="id_input_column">
+  <input type=button id="id_filter" value="filter">
+  <b>&nbsp;&nbsp; Please refer to <a href="https://groups.google.com/a/google.com/forum/#!forum/ipdb-audit-results">link</a> for records more than 10,000 </b>
+  <br>
+  <table border=1 id="id_table_auditreport" cellspacing="0" class="display"
+    style="width:100%; padding:10px; background-color: #c3d9ff; border-width:thin">
+    <thead>
+      <tr bgcolor=#99ccff>
+        <th class="netblock">Netblock</th>
+        <th class="tags">Tags</th>
+        <th class="vlanID" width=80px>Vlan Id</th>
+        <th class="building">Building</th>
+        <th class="network">Network</th>
+        <th class="attributes">Attributes</th>
+        <th class="auditCode">Audit Code</th>
+        <th class="correlates">Correlates</th>
+        <th class="auditMsg">Audit Msg</th>
+        <th class="state">State<div id='id_audit_state' style='display: none;'>&nbsp; T:Ticket;A:Autofix</div></th>
+        <th class="fixState">Autofix State</th>
+        <th class="tickets">Whitelist Tickets</th>
+        <th class="expectedValue">Expected Value</th>
+        <th class="fixMsg">Autofix Message</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{$auditcode := .AuditCodeSelected}}
+      {{range .AuditRecords}}{{if and (eq .AuditName $select_auditname) (or (not $auditcode) (eq .AuditCode $auditcode))}}
+      <tr class="ar_row"
+          netblock="{{.Netblock}}" tags="{{.Tags}}" vlanID="{{.VlanID}}" building="{{.Building}}"
+          attributes="{{.Attributes}}" auditName="{{.AuditName}}" auditCode="{{.SuperCode}}"
+          auditMsg="{{.AuditMsg}}" subCode="{{.AuditCode}}" state="{{.State}}"
+          fixState="{{.FixState}}" expectedValue="{{.ExpectedValue}}" network="{{.Network}}"
+        >
+        <td class='tablecell netblock'>{{.Netblock}} <a href="http://go/netblocks/?ip_address={{.IPAddr}}%2F{{.Prefixlen}}" class=column_link target=_ipdb>(IPDB)</a></td>
+        <td class='tablecell tags'>{{.Tags}}</td>
+        <td class='tablecell vlanID'>{{.VlanID}}</td>
+        <td class='tablecell building'>{{.Building}}</td>
+        <td class='tablecell network'>{{.Network}}</td>
+        <td class='tablecell attributes'>{{.Attributes}}</td>
+        <td class='tablecell auditCode'>{{.AuditCode}}</td>
+        <td class='tablecell correlates'>{{.Correlates}}</td>
+        <td class='tablecell auditMsg'>{{.AuditMsg}}</td>
+        <td class='tablecell state'>{{.State}}</td>
+        <td class='tablecell fixState'>{{.FixState}}</td>
+        <td class='tablecell tickets'>{{range .Tickets}}<a href="http://{{.}}" class=column_link target=_ipdb>{{.}}</a>&nbsp; {{end}}</td>
+        <td class='tablecell expectedValue'>{{.ExpectedValue}}</td>
+        <td class='tablecell fixMsg'>{{.FixMsg}}</td>
+      </tr>
+      {{end}}{{end}}
+    </tbody>
+  </table>
+
+  <script type="text/javascript">
+
+    function addOptions(attribute, select_element) {
+      var rows = $("tr.ar_row:visible").toArray();
+      var counters = new Object();
+      var keys = []
+      var v
+      for (index in rows) {
+        v = rows[index].getAttribute(attribute);
+        if (v in counters) {
+          counters[v] += 1;
+        } else {
+          counters[v] = 1;
+          keys.push(v);
+        }
+      }
+
+      $("#"+select_element).empty().append('<option value="--All--" selected=selected>--All--</option>');
+      keys.sort();
+      for (i in keys) {
+        var key = keys[i];
+        $("#"+select_element).append('<option value="' + key + '">' + key + ' (' + counters[key] + ')</option>');
+      }
+    }
+
+    function filterColumns() {
+      var audit_code = $("#id_select_auditcode option:selected").val();
+
+      $("tr.ar_row").each(function(n) {
+        tr0 = $(this);
+        if (audit_code =="--All--" || tr0.attr("auditCode") == audit_code) {
+          tr0.show();
+        } else {
+          tr0.hide();
+        }
+      });
+    }
+
+    function filterColumnsBySubCode() {
+      var audit_code = $("#id_select_auditcode option:selected").val();
+      var sub_code = $("#id_select_subcode option:selected").val();
+
+      $("tr.ar_row").each(function(n) {
+        tr0 = $(this);
+        if (tr0.attr("auditCode") == audit_code && (sub_code =="--All--" ||
+            tr0.attr("subCode") == sub_code)) {
+          tr0.show();
+        } else {
+          tr0.hide();
+        }
+      });
+    }
+
+    function filterByColumn() {
+      var audit_code = $("#id_select_auditcode option:selected").val();
+      var match_value = $("#id_input_column").val();
+      var column_name = $("#id_select_column option:selected").val();
+      $("tr.ar_row").each(function(n) {
+        tr0 = $(this);
+        if ((audit_code =="--All--" || tr0.attr("auditCode") == audit_code) &&
+           tr0.attr(column_name).search(match_value) > -1) {
+          tr0.show();
+        } else {
+          tr0.hide();
+        }
+      });
+    }
+
+    function onAuditNameChange(an) {
+      var select_snapshot = $("#id_datepicker").val()
+      window.location = "?snapshot=" + select_snapshot + '&auditname=' + an
+    }
+
+    function joinCsv(row, sep) {
+      fields = ['netblock', 'tags', 'vlanID', 'building', 'attributes',
+                'auditName', 'auditCode', 'auditMsg', 'state',
+                'expectedValue'];
+      ar = []
+      for (i in fields) {
+        ar.push('"' + row.getAttribute(fields[i]) + '"');
+      }
+      return ar.join(sep);
+    }
+
+    function downloadCsv() {
+      var rows = $("tr.ar_row:visible").toArray();
+      data = [];
+      for (i in rows) {
+        data.push(joinCsv(rows[i], ','));
+      }
+      var uri = 'data:text/csv;charset=utf-8,' + escape(data.join('\n'));
+      var downloadLink = document.createElement("a");
+      var filename = $("#id_select_auditname").val() + '.' + $("#id_datepicker").val() + '.csv';
+      downloadLink.href = uri;
+      downloadLink.download = filename;
+
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+
+    $(document).ready(function() {
+
+      var select_an = $("#id_select_auditname").val();
+      var maxDate = new Date("{{.MaxDate}}");
+      $('#id_datepicker').datepicker({
+        defaultDate: maxDate,
+        dateFormat: 'yy-mm-dd',
+        minDate: new Date("{{.MinDate}}"),
+        maxDate: maxDate,
+        onSelect: function (date, i) {
+          if (date != i.lastVal) {
+            $('#id_datepicker').attr('value',date);
+            window.location = "?snapshot=" + date.toString() + '&auditname=' + select_an
+          }
+        }
+      });
+      $('#id_datepicker').datepicker("setDate", new Date("{{.SnapshotSelected}}"));
+
+      addOptions("auditCode", "id_select_auditcode");
+
+      $("#id_select_auditname").change(function() {
+        var an = $(this).val();
+        onAuditNameChange(an);
+      });
+
+      $("#id_select_auditcode").change(function() {
+        filterColumns();
+        var audit_code = $("#id_select_auditcode option:selected").val();
+        if (audit_code != "--All--") {
+          addOptions("subCode", "id_select_subcode");
+        }
+      });
+      $("#id_select_subcode").change(function() {
+        var sub_code = $("#id_select_subcode option:selected").val();
+        if (sub_code != null) {
+          filterColumnsBySubCode();
+        }
+      });
+
+      $('#id_csv').click(function() {
+        downloadCsv();
+      });
+
+      $('#id_filter').click(function() {
+        filterByColumn();
+      });
+
+      $('th.state').hover(function() {
+        $('#id_audit_state').show();
+      },function() {
+        $('#id_audit_state').hide();
+      });
+
+      $('#id_table_auditreport').DataTable({
+          "aLengthMenu": [[1000, 2000, -1], [1000, 2000, "All"]],
+          "paging": true,
+          "pagingType": "full_numbers",
+          "pageLength": 1000,
+          "searching": false
+      });
+    });
+  </script>
+{{end}}
