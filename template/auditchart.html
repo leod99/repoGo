@@ -1,0 +1,100 @@
+{{define "content"}}
+<br>
+<div id="id_dashboard_title"><b>Audit Dashboard</b></div>
+<table id="id_table_auditchart" width=100%>
+  {{range $audit_name, $audit_stat := .AuditStats}}
+  <tr>
+    <td colspan=2 class="audit_name_chart">
+      <input id="id_{{$audit_name}}" class="toggle_button" type="button"/>
+      <span class="audit_name_chart" id="id_title_{{$audit_name}}">{{$audit_name}}</span>
+      <span class="audit_name_help">
+        <a href="//goto.google.com/dragonwell-site">&nbsp ?</a>
+      </span>
+    </td>
+  </tr>
+  <tr id="id_{{$audit_name}}_chart">
+    <td style="padding-top: 10px; padding-bottom: 10px;">
+      <span class="chart_title">Count</span><p>
+      <div id="chart_{{$audit_name}}" style="width: 600px; height: 300px;"></div>
+    </td>
+    <td style="padding-top: 10px; padding-bottom: 10px;">
+      <span class=chart_title>Percentage(%)</span><p>
+      <div id="chart_{{$audit_name}}_per" style="width: 600px; height: 300px;"></div>
+    </td>
+  </tr>
+
+  {{end}}
+</table>
+
+<script type="text/javascript">
+  google.load('visualization', '1', {packages:['annotationchart']});
+  function drawCharts() {
+    var data;
+    var chart;
+    var options;
+    {{range $audit_name, $audit_stats := .AuditStats}}
+    data = new google.visualization.DataTable();
+    data.addColumn('date', 'Date');
+    data.addColumn('number', 'Error');
+    data.addColumn('number', 'Warning');
+    data.addRows([
+      {{range $audit_stats}}
+      [new Date("{{.Datestamp}}"), {{.ErrCount}}, {{.WarnCount}}],
+      {{end}}
+      ]);
+
+    options = {
+      displayAnnotations: false,
+      colors: ["red", "orange"],
+      thickness: 2,
+    };
+    chart = new google.visualization.AnnotationChart(document.getElementById('chart_{{$audit_name}}'));
+    chart.draw(data, options);
+
+    data = new google.visualization.DataTable();
+    data.addColumn('date', 'Date');
+    data.addColumn('number', 'Error Per');
+    data.addColumn('number', 'Warning Per');
+    data.addRows([
+      {{range $audit_stats}}
+      [new Date("{{.Datestamp}}"), {{.ErrPer}} * 100, {{.WarnPer}} * 100],
+      {{end}}
+      ]);
+
+    options = {
+      displayAnnotations: false,
+      colors: ["red", "orange"],
+      min: 0,
+      max: 100,
+      fill: 50,
+      thickness: 2,
+    };
+    chart = new google.visualization.AnnotationChart(document.getElementById('chart_{{$audit_name}}_per'));
+    chart.draw(data, options);
+
+    {{end}}
+  };
+
+  function initCharts() {
+    var title;
+    {{range $audit_name := .DeprecatedAudits}}
+      title = $('#'+ 'id_title_' + {{$audit_name}}).text();
+      $('#'+ 'id_title_' + {{$audit_name}}).text(title + ' - deprecated');
+      $('#'+ 'id_' + {{$audit_name}}).toggleClass("right");
+      $('#'+ 'id_' + {{$audit_name}} + '_chart').toggle();
+    {{end}}
+
+  };
+  $(document).ready(function() {
+    drawCharts();
+
+    initCharts();
+    $('.toggle_button').click(function(){
+
+      var audit_name = this.id;
+      $(this).toggleClass("right");
+      $('#'+audit_name+'_chart').toggle();
+    });
+  });
+</script>
+{{end}}
