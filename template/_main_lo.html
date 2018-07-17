@@ -1,0 +1,112 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>
+      Dragonwell
+    </title>
+    <link href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/smoothness/jquery-ui.css" rel="stylesheet" type="text/css"/>
+    <link href="https://www.gstatic.com/external_hosted/jquery_datatables/css/jquery.dataTables.css" rel="stylesheet" type="text/css"/>
+    <link href="//www.google.com/css/maia.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <style type="text/css">
+      table {
+        table-layout: fixed;
+        width: 100%;
+      }
+      #id_table_auditreport td { word-wrap: break-word; }
+      #id_table_auditticket td { word-wrap: break-word; }
+      #dw-nav-x {
+        background-color:#376DB8;
+      }
+      #dw-nav-x li {
+        list-style: none;
+        float: left;
+        padding-right: 2em;
+      }
+      #dw-nav-x a {
+        font-size: 1.2em;
+        font-family: Arial;
+      }
+      #dw-nav-x a:link {
+        color: white;
+      }
+      #dw-nav-x a:visited {
+        color: white;
+      }
+      .netblock { width: 120px; }
+      .tags { width: 50px; }
+      .vlanID { width: 20px; }
+      .building { width: 70px; }
+      .gateway { width: 120px; }
+      .attributes { width: 100px; }
+      .childAttributes { width: 100px; }
+      .expectedValue { width: 120px; }
+      .network { width: 120px; }
+      .auditName { width: 80px; }
+      .auditCode { width: 30px; }
+      .auditMsg { width: 200px; }
+      .correlates { width: 100px; }
+      .state { width: 20px; }
+      .fixState { width: 30px; }
+      .fixMsg { width: 30px; }
+      .tickets { width: 90px; }
+      .ticketSummary { width: 200px; }
+      .datestamp { width: 90px; }
+      .ticketID { width: 100px; }
+      .chart_title {
+        font-size: 1.2em;
+        font-weight: bold;
+      }
+      .audit_name_chart {
+        background-color: #ECF6FF;
+        color: #05367A;
+        font-size: 1.3em;
+        font-weight: bold;
+      }
+      .toggle_button {
+        background-image: url("/down.png");
+        width: 20px;
+        height:20px;
+      }
+      .toggle_button.right {
+        background-image: url("/right.png");
+        width: 20px;
+        height:20px;
+      }
+    </style>
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/external_hosted/jquery_datatables/js/jquery.dataTables.js"></script>
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+  </head>
+  <body>
+    <div class="maia-header" id="maia-header" role="banner">
+      <h1>
+        <a href="../">
+          <img alt="Google" src="/dw_logo.png">
+          Dragonwell
+        </a>
+      </h1>
+      <div class="maia-aux" style="float: right;">
+        <a href="//goto.google.com/dragonwell-site">
+          help
+        </a>
+      </div>
+    </div>
+    <div class="dw-nav" id="dw-nav-x" role="navigation" style="float: left;width: 100%;">
+      <div class="dw-aux">
+        <ul id="dw-navi-bar">
+          <li><a href="/auditreport/">Audit Report</a></li>
+          <li><a href="/auditticket/">Audit Ticket</a></li>
+          <li><a href="/fixchart/">Autofix Dashboard</a></li>
+        </ul>
+      </div>
+    </div>
+    <br>
+
+    {{template "content" .ContentData}}
+
+  </body>
+</html>
+{{end}}
