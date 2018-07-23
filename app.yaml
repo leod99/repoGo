@@ -1,4 +1,4 @@
-application: google.com:dragonwell
+application: tte.com:dw
 version: 1
 instance_class: F4_1G
 runtime: go
@@ -6,8 +6,8 @@ api_version: go1
 
 handlers:
 - url: /(.*\.(gif|png|jpg))$
-  static_files: google3/ops/netopscorp/dragonwell/go/static/\1
-  upload: google3/ops/netopscorp/dragonwell/go/static/.*\.(gif|png|jpg)$
+  static_files: .../go/static/\1
+  upload: .../go/static/.*\.(gif|png|jpg)$
 
 - url: /.*
   script: _go_app
