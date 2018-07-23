@@ -17,7 +17,7 @@ var (
 		{
 			EnforcePoint: []*spb.ACLEnforcementPoint{
 				{
-					DeviceName: proto.String("us-svl-tc3-labdist1-2-1"),
+					DeviceName: proto.String("ussvl2-1"),
 					Tags: []*spb.ACLEnforcementPoint_Tag{
 						{
 							Type:  proto.String("Region"),
