@@ -9,26 +9,26 @@ import (
 
 	"appengine"
 
-	"google3/go/context/aecontext"
-	"google3/go/context/context"
-	"google3/security/keystore/go/keystore"
-	idpb "google3/security/keystore/proto/config/config_ids_go_proto"
+	"/go/context/aecontext"
+	"/go/context/context"
+	"/security/keystore/go/keystore"
+	idpb "/se/config_ids_go_proto"
 	// Used for sql.Open("mysql" dsn).
-	_ "google3/third_party/golang/mysql/mysql"
+	_ "/third_party/golang/mysql/mysql"
 )
 
 const (
-	passwordKeyName = "dragonwell_db_password"
-	delegatedRole   = "apphosting-stubby-api--s-7egoogle-2ecom-3adragonwell"
-	dbInstance      = "google.com:dragonwell:dragonwellins"
+	passwordKeyName = "dw_db_password"
+	delegatedRole   = "ll"
+	dbInstance      = ""
 	protoTcp        = "tcp"
 	protoCloud      = "cloudsql"
 	dbAddr          = "17xxx:3306"
-	dbName          = "dragonwell"
+	dbName          = "dw"
 	dbUser          = "root"
-	auditTable      = "ipdb_audit"
-	auditStatsTable = "ipdb_audit_stats"
-	ticketTable     = "ipdb_ticket"
+	auditTable      = ""
+	auditStatsTable = ""
+	ticketTable     = ""
 	auditSelect     = `
 SELECT netblock, tags, vlan_id, building, gateway, attributes,
 child_attributes, expected_value, network, audit_name,
