@@ -8,14 +8,14 @@ import (
 	"net/http"
 	"path"
 
-	"google3/ops/netopscorp/dragonwell/go/models"
+	"g/go/models"
 )
 
 // templateDir is the directory where HTML templates are stored.
-const templateDir = "google3/ops/netopscorp/dragonwell/go/templates"
+const templateDir = ".../go/templates"
 
 // depreAudits is the list of deprecated audits
-var depreAudits = []string{"corp_external_dns", "corp_netmgt"}
+var depreAudits = []string{"ced", "con"}
 
 // These are the templates which can be rendered.
 var reportTemplate, chartTemplate, fixTemplate, ticketTemplate *template.Template
