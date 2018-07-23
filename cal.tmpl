@@ -1,0 +1,48 @@
+{{define "layout"}}{{/*
+*/}}{{if .IntfDirection}}{{/*
+*/}}{{$acl := .}}
+{{range .IntfDirection}}{{/*
+ ------------------ */}}{{/*
+*/}}{{if eq .Intf "controlplane"}}{{/*
+*/}}control-plane
+{{if eq .Direction "in"}}{{/*
+*/}} LICY
+{{else}}{{/*
+*/}} nPOLICY
+{{end}}{{/*
+ ---------------- */}}{{/*
+*/}}{{else if .Intf}}{{/*
+*/}}interface {{.Intf}}
+{{if eq $acl.IPVersion 4}}{{/*
+*/}} -group {{$acl.Name}} {{.Direction}}
+{{else if eq $acl.IPVersion 6}}{{/*
+*/}} no {{$acl.Name}} {{.Direction}}{{/*
+*/}}{{end}}{{/*
+*/}}{{end}}{{/*
+*/}}{{end}}{{/*
+ --------------ON ---------------- */}}
+{{.Data}}
+{{range .IntfDirection}}{{/*
+ ---------------- AL ---------------- */}}{{/*
+*/}}{{if eq .Intf "controlplane"}}{{/*
+*/}}control-plane
+{{if eq .Direction "in"}}{{/*
+*/}} service-policy input CONTROLPLANE-POLICY
+{{else}}{{/*
+*/}} service-policy output CONTROLPLANE-POLICY
+{{end}}{{/*
+ -----------PLY ACL ---------------- */}}{{/*
+*/}}{{else}}{{/*
+*/}}interface {{.Intf}}
+{{if eq $acl.IPVersion 4}}{{/*
+*/}} ip access-group {{$acl.Name}} {{.Direction}}
+{{else if $acl.IPVersion 6}}{{/*
+*/}} ipv6 ffic-filter {{$acl.Name}} {{.Direction}}{{/*
+*/}}{{end}}{{/*
+*/}}{{end}}{{/*
+*/}}{{end}}{{/*
+ ---------------- NO INTERF DATA ---------------- */}}{{/*
+*/}}{{else}}
+{{.Data}}{{/*
+*/}}{{end}}{{/*
+*/}}{{end}}
