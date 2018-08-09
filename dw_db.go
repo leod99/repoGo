@@ -9,26 +9,26 @@ import (
 
 	"appengine"
 
-	"/go/context/aecontext"
-	"/go/context/context"
-	"/security/keystore/go/keystore"
-	idpb "/se/config_ids_go_proto"
+	"../go/context/aecontext"
+	"../go/context/context"
+	"../security/keystore/go/keystore"
+	idpb "../security/keystore/proto/config/config_ids_go_proto"
 	// Used for sql.Open("mysql" dsn).
-	_ "/third_party/golang/mysql/mysql"
+	_ "../third_party/golang/mysql/mysql"
 )
 
 const (
-	passwordKeyName = "dw_db_password"
-	delegatedRole   = "ll"
-	dbInstance      = ""
+	passwordKeyName = "dwdbword"
+	delegatedRole   = "--ell"
+	dbInstance      = "ins"
 	protoTcp        = "tcp"
 	protoCloud      = "cloudsql"
-	dbAddr          = "17xxx:3306"
-	dbName          = "dw"
+	dbAddr          = "100.:3306"
+	dbName          = "dragonwell"
 	dbUser          = "root"
-	auditTable      = ""
-	auditStatsTable = ""
-	ticketTable     = ""
+	auditTable      = "ipdb_audit"
+	auditStatsTable = "ipdb_audit_stats"
+	ticketTable     = "ipdb_ticket"
 	auditSelect     = `
 SELECT netblock, tags, vlan_id, building, gateway, attributes,
 child_attributes, expected_value, network, audit_name,
@@ -39,9 +39,11 @@ SELECT audit_name, COUNT(*) FROM %s WHERE datestamp=? GROUP BY audit_name ORDER 
 	snapshotsSelect = `
 SELECT datestamp FROM %s GROUP BY datestamp ORDER BY datestamp DESC`
 	statsSelect = `
-SELECT audit_name, err_count, warn_count, err_per, warn_per, datestamp FROM %s`
+SELECT audit_name, err_count, warn_count, err_per, warn_per, datestamp FROM %s WHERE audit_name <> 'corp_reports'`
 	fixStatsSelect = `
 SELECT audit_name, autofix_count, fixed_count, datestamp FROM %s WHERE autofix_count IS NOT NULL`
+	overallSelect = `
+SELECT err_count, total, err_per FROM %s WHERE audit_name='corp_reports' order by datestamp desc limit 1`
 	ticketsSelect = `
 SELECT summary, description, audit_name, audit_code, state, datestamp, ticket_id FROM %s`
 )
@@ -75,12 +77,13 @@ type AuditRecord struct {
 
 // StatsRecord contains audit statistical data.
 type StatsRecord struct {
-	AuditName string
-	ErrCount  int
-	WarnCount int
-	ErrPer    string
-	WarnPer   string
-	Datestamp string
+	AuditName  string
+	ErrCount   int
+	WarnCount  int
+	ErrPer     string
+	WarnPer    string
+	TotalCount int
+	Datestamp  string
 }
 
 // FixStatsRecord contains autofix statistical data.
@@ -111,6 +114,7 @@ type sqlStore struct {
 	snapshotsStmt  *sql.Stmt
 	statsStmt      *sql.Stmt
 	fixStatsStmt   *sql.Stmt
+	overallStmt    *sql.Stmt
 	ticketsStmt    *sql.Stmt
 }
 
@@ -119,7 +123,7 @@ type Store interface {
 	AuditRecords(snapshot, auditname string) ([]*AuditRecord, error)
 	AuditCount(snapshot string) (map[string]int, error)
 	Snapshots() ([]string, string, string, error)
-	AuditStats() (map[string][]*StatsRecord, error)
+	AuditStats() (map[string][]*StatsRecord, *StatsRecord, error)
 	FixStats() (map[string][]*FixStatsRecord, error)
 	AuditTickets() ([]*TicketRecord, error)
 	// Close releases resources associated with the store.
@@ -178,6 +182,9 @@ func initStore(db *sql.DB) (*sqlStore, error) {
 	if s.fixStatsStmt, err = s.db.Prepare(fmt.Sprintf(fixStatsSelect, auditStatsTable)); err != nil {
 		return nil, err
 	}
+	if s.overallStmt, err = s.db.Prepare(fmt.Sprintf(overallSelect, auditStatsTable)); err != nil {
+		return nil, err
+	}
 	if s.ticketsStmt, err = s.db.Prepare(fmt.Sprintf(ticketsSelect, ticketTable)); err != nil {
 		return nil, err
 	}
@@ -199,16 +206,16 @@ func (s *sqlStore) AuditRecords(snapshot, auditname string) ([]*AuditRecord, err
 	for r.Next() {
 		if err := r.Scan(&netblock, &tags, &vlanID, &building, &gateway, &attributes,
 			&childAttributes, &expectedValue, &network,
-			&auditName, &auditCode, &correlates, &auditMsg, &severity, &state, &fixState, &fixMsg, &tickets,
+      &auditName, &auditCode, &correlates, &auditMsg, &severity, &state, &fixState, &fixMsg, &tickets,
 			&datestamp, &id); err != nil {
 			return nil, err
 		}
 		ipFields := strings.Split(netblock, "/")
 		superCode := strings.Split(auditCode, "_")
 		rs = append(rs, &AuditRecord{
-			netblock, ipFields[0], ipFields[1], string(tags), string(vlanID), string(building), string(gateway),
-			string(attributes), string(childAttributes), string(expectedValue), string(network), auditName,
-			auditCode, superCode[0], string(correlates), string(auditMsg), string(severity), string(state), string(fixState), string(fixMsg), strings.Split(string(tickets), ","), datestamp, id,
+      netblock, ipFields[0], ipFields[1], string(tags), string(vlanID), string(building), string(gateway),
+      string(attributes), string(childAttributes), string(expectedValue), string(network), auditName,
+      auditCode, superCode[0], string(correlates), string(auditMsg), string(severity), string(state), string(fixState), string(fixMsg), strings.Split(string(tickets), ","), datestamp, id,
 		})
 	}
 
@@ -259,27 +266,41 @@ func (s *sqlStore) Snapshots() ([]string, string, string, error) {
 }
 
 // AuditStats fetches statistical data of all audits.
-func (s *sqlStore) AuditStats() (map[string][]*StatsRecord, error) {
+func (s *sqlStore) AuditStats() (map[string][]*StatsRecord, *StatsRecord, error) {
 	r, err := s.statsStmt.Query()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer r.Close()
 	var auditName, datestamp, errPer, warnPer string
-	var errCount, warnCount int
+	var errCount, warnCount, totalCount int
 	var errPerf, warnPerf float64
 	asMap := make(map[string][]*StatsRecord)
 	for r.Next() {
-		if err := r.Scan(&auditName, &errCount, &warnCount, &errPerf, &warnPerf, &datestamp); err != nil {
-			return nil, err
+    if err := r.Scan(&auditName, &errCount, &warnCount, &errPerf, &warnPerf, &datestamp); err != nil {
+			return nil, nil, fmt.Errorf("Error on scan of StatsRecord, %v", err)
 		}
 		errPer = fmt.Sprintf("%.4f", errPerf)
 		warnPer = fmt.Sprintf("%.4f", warnPerf)
 		asMap[auditName] = append(asMap[auditName], &StatsRecord{
-			auditName, errCount, warnCount, errPer, warnPer, datestamp,
+			auditName, errCount, warnCount, errPer, warnPer, 0, datestamp,
 		})
 	}
-	return asMap, nil
+	err = s.overallStmt.QueryRow().Scan(&errCount, &totalCount, &errPer)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error on scan of overall stats, %v", err)
+	}
+	errPer = fmt.Sprintf("%.4f", errPerf)
+	overallStats := StatsRecord{
+		AuditName:  "",
+		ErrCount:   errCount,
+		WarnCount:  0,
+		ErrPer:     errPer,
+		WarnPer:    "",
+		TotalCount: totalCount,
+		Datestamp:  ""}
+
+	return asMap, &overallStats, nil
 }
 
 // FixStats fetches statistical data of autofix.
@@ -331,7 +352,7 @@ func (s *sqlStore) AuditTickets() ([]*TicketRecord, error) {
 	var ticketID int
 	var rs []*TicketRecord
 	for r.Next() {
-		if err := r.Scan(&summary, &desc, &auditName, &auditCode, &state, &datestamp, &ticketID); err != nil {
+    if err := r.Scan(&summary, &desc, &auditName, &auditCode, &state, &datestamp, &ticketID); err != nil {
 			return nil, err
 		}
 
@@ -362,7 +383,7 @@ func GetPassword(ctx appengine.Context, server string) (string, error) {
 
 	ctx.Infof("clientOptions: %v", clientOptions)
 	// KeystoreConfigIds_NETOPS_CORP is 70890.
-	keystoreClient, err := keystore.NewClient(server, int32(idpb.KeystoreConfigIds_NETOPS_CORP), clientOptions)
+  keystoreClient, err := keystore.NewClient(server, int32(idpb.KeystoreConfigIds_NETOPS_CORP), clientOptions)
 	if err != nil {
 		return "", err
 	}
