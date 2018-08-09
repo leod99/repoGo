@@ -8,14 +8,14 @@ import (
 	"net/http"
 	"path"
 
-	"g/go/models"
+	".../go/models"
 )
 
 // templateDir is the directory where HTML templates are stored.
 const templateDir = ".../go/templates"
 
 // depreAudits is the list of deprecated audits
-var depreAudits = []string{"ced", "con"}
+var depreAudits = []string{"al_dns", "_netmgt"}
 
 // These are the templates which can be rendered.
 var reportTemplate, chartTemplate, fixTemplate, ticketTemplate *template.Template
@@ -54,18 +54,30 @@ func auditChartHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	defer store.Close()
 
-	stats, err = store.AuditStats()
+	var overallStats *models.StatsRecord
+	stats, overallStats, err = store.AuditStats()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		c.Infof("Error on audit stats query: %s", err.Error())
 	}
 	c.Infof("stats len: %d", len(stats))
-
 	templateData := struct {
 		AuditStats       map[string][]*models.StatsRecord
 		DeprecatedAudits []string
+		OverallStats     struct {
+			ErrCount  int
+			Compliant int
+		}
 	}{
 		AuditStats:       stats,
 		DeprecatedAudits: depreAudits,
+		OverallStats: struct {
+			ErrCount  int
+			Compliant int
+		}{
+			ErrCount:  overallStats.ErrCount,
+			Compliant: overallStats.TotalCount - overallStats.ErrCount,
+		},
 	}
 	if err := renderLayout(c, w, chartTemplate, templateData); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
